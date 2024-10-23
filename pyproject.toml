@@ -9,6 +9,9 @@ readme = "README.md"
 python = "^3.10"
 pandas = "^2.2.3"
 streamlit = "^1.39.0"
+matplotlib = "^3.9.2"
+seaborn = "^0.13.2"
+scikit-learn = "^1.5.2"
 
 
 [build-system]
