@@ -8,7 +8,7 @@ from sklearn.preprocessing import OrdinalEncoder
 from sklearn.ensemble import RandomForestClassifier
 
 
-st.set_page_config(page_title="✍️ Inputs", page_icon="✍️", layout="wide")
+st.set_page_config(page_title="Exploration", page_icon="✍️", layout="wide")
 
 def load_ks_data():
     df = pd.read_csv('data/ks_dataset.csv', sep=",", encoding="latin1")
@@ -130,7 +130,7 @@ if __name__=="__main__":
     encoded_df = pd.DataFrame(encoded_features, columns=encoded_feature_names, index=clean_df.index)
     
     # Combine encoded features with the original dataframe
-    clean_df = pd.concat([clean_df[numeric_columns], encoded_df], axis=1)
+    encoded_df = pd.concat([clean_df[numeric_columns], encoded_df], axis=1)
 
     # Combine numeric and encoded categorical columns
     all_features = list(numeric_columns) + categorical_columns
@@ -138,7 +138,7 @@ if __name__=="__main__":
     numeric_columns = all_features
 
     # Calculate correlation matrix
-    correlation_matrix = clean_df[numeric_columns + ['label']].corr()
+    correlation_matrix = encoded_df[numeric_columns + ['label']].corr()
 
     # Plot correlation heatmap
     st.subheader("Correlation Heatmap")
@@ -156,31 +156,177 @@ if __name__=="__main__":
     st.markdown("""
                 Notes à la volée: pas de pb de déséquilibre""")
     
-    # Feature importance using Random Forest
-    st.subheader("Feature Importance")
+    if False:
+        # Feature importance using Random Forest
+        st.subheader("Feature Importance")
 
-    # Prepare the data
-    X = clean_df[numeric_columns]
-    y = clean_df['label']
+        # Prepare the data
+        X = clean_df[numeric_columns]
+        y = clean_df['label']
 
-    # Train a Random Forest classifier
-    rf_classifier = RandomForestClassifier(n_estimators=100, random_state=42)
-    rf_classifier.fit(X, y)
+        # Train a Random Forest classifier
+        rf_classifier = RandomForestClassifier(n_estimators=100, random_state=42)
+        rf_classifier.fit(X, y)
 
-    # Get feature importance
-    feature_importance = pd.DataFrame({
-        'feature': numeric_columns,
-        'importance': rf_classifier.feature_importances_
-    }).sort_values('importance', ascending=False)
+        # Get feature importance
+        feature_importance = pd.DataFrame({
+            'feature': numeric_columns,
+            'importance': rf_classifier.feature_importances_
+        }).sort_values('importance', ascending=False)
 
-    # Plot feature importance
-    fig_importance = plt.figure(figsize=(10, 6))
-    sns.barplot(x='importance', y='feature', data=feature_importance)
-    plt.title("Feature Importance")
-    st.pyplot(fig_importance)
+        # Plot feature importance
+        fig_importance = plt.figure(figsize=(10, 6))
+        sns.barplot(x='importance', y='feature', data=feature_importance)
+        plt.title("Feature Importance")
+        st.pyplot(fig_importance)
+
+        st.markdown("""
+        ### Notes à la volée:
+        1. Difficile de tirer des conclusions de la matrice de corrélation, tant les corrélations sont faibles avec le label.
+        2. En revanche l'analyse d'importance des features ressemble plus à ce dont je m'attendais. A savoir que la quantité demandée semble beaucoup influer sur le succès ou non de la campagne
+        """)
+
+    st.dataframe(clean_df.describe())
+    st.markdown(f"Number of campaign with a goal above 1000000: {len(clean_df[clean_df['goal']>1000000].index)}")
+    st.markdown(f"Number of successful campaign with a goal above 1000000: {len(clean_df[(clean_df['goal']>1000000) & (clean_df.label==1)].index)}")
+    st.markdown(f"Number of campaign with a timedelta above 100: {len(clean_df[clean_df['timedelta']>100].index)}")
+    st.markdown(f"Number of successful campaign with a timedelta above 100: {len(clean_df[(clean_df['timedelta']>100) & (clean_df.label==1)].index)}")
+
+
+
+    import plotly.graph_objects as go
+
+    def plot_label_distribution_numerical(df, col_name):
+        # Calculate the min and max values for the column (only if successful campaign)
+        min_val = df[col_name].min()
+        max_val = df[df.label==1][col_name].max()
+        
+        # Create 10 bins
+        bins = pd.interval_range(start=min_val, end=max_val, periods=10)
+
+        # Cut the data into bins and calculate the mean of 'label' for each bin
+        df['bin'] = pd.cut(df[col_name], bins=bins)
+        grouped = df.groupby('bin')['label'].mean().reset_index()
+        count = df.groupby('bin').size().reset_index(name='count')
+
+        plot_df = grouped.merge(count, on='bin', how='left')
+        
+        # Create the histogram using plotly
+        fig = go.Figure()
+
+        fig.add_trace(go.Bar(
+            x=[f'{interval.left}-{interval.right}' for interval in grouped['bin']],
+            y=plot_df['label'],
+            text=[f'{val:.2%}' for val in plot_df['label']],
+            textposition='auto',
+            name='Success Rate',
+            yaxis='y'
+        ))
+
+        fig.add_trace(go.Scatter(
+            x=[f'{interval.left}-{interval.right}' for interval in grouped['bin']],
+            y=plot_df['count'],
+            text=plot_df['count'],
+            mode='lines+markers+text',
+            textposition='top center',
+            textfont=dict(color='red'),
+            name='Campaign Count',
+            yaxis='y2'
+        ))
+
+        # Update layout to include secondary y-axis
+        fig.update_layout(
+            yaxis=dict(title='Success Rate', range=[0, 1]),
+            yaxis2=dict(title='Campaign Count', overlaying='y', side='right', range=[0, plot_df['count'].max()*1.1])
+        )
+        # Customize the plot
+        fig.update_layout(
+            title=f"Distribution of Successful Campaigns by {col_name} (10% ranges)",
+            xaxis_title=f"{col_name} Ranges",
+            yaxis_title="Proportion of Successful Campaigns",
+            xaxis_tickangle=-45,
+            height=600,
+            width=1000
+        )
+        
+        # Display the plot
+        st.plotly_chart(fig)
+
+    st.subheader(f"Distribution of Successful Campaigns by Goal Amount")
+    plot_label_distribution_numerical(clean_df, 'goal')
+    st.subheader(f"Distribution of Successful Campaigns by timedelta")
+    plot_label_distribution_numerical(clean_df, 'timedelta')
 
     st.markdown("""
-    ### Notes à la volée:
-    1. Difficile de tirer des conclusions de la matrice de corrélation, tant les corrélations sont faibles avec le label.
-    2. En revanche l'analyse d'importance des features ressemble plus à ce dont je m'attendais. A savoir que la quantité demandée semble beaucoup influer sur le succès ou non de la campagne
-    """)
+        ### Notes à la volée:
+- On remarque que plus le goal ou le timedelta est élevé plus les chances de réussite s'effondre. Précisément au dela d'un mois (30 jours)
+- Le dataset est lourdement bisaisé par des campagnes de 1 mois pile (interval entre 28 et 37 jours)
+- Evidemment si le but est de fournir un conseil au client, une étude plus approfondie par catégorie x country doit être envisagée. (ou par ex si la date de lancement a un impact sur le résultat, ex avant noel / vacances...)
+                """)
+
+
+    def plot_label_distribution_categorical(df, col_name):
+        grouped = df.groupby(col_name)['label'].mean().reset_index()
+        count = df.groupby(col_name).size().reset_index(name='count')
+        
+        plot_df = grouped.merge(count, on=col_name, how='left')
+
+        # Create the histogram using plotly
+        fig = go.Figure()
+
+        # Add Success Rate bar
+        fig.add_trace(go.Bar(
+            x=plot_df[col_name],
+            y=plot_df['label'],
+            text=[f'{val:.2%}' for val in plot_df['label']],
+            textposition='auto',
+            name='Success Rate',
+            yaxis='y'
+        ))
+
+        # Add Campaign Count as a line
+        fig.add_trace(go.Scatter(
+            x=plot_df[col_name],
+            y=plot_df['count'],
+            text=plot_df['count'],
+            mode='lines+markers+text',
+            textposition='top center',
+            textfont=dict(color='red'),
+            name='Campaign Count',
+            yaxis='y2'
+        ))
+
+        # Update layout to include secondary y-axis
+        fig.update_layout(
+            yaxis=dict(title='Success Rate', range=[0, 1]),
+            yaxis2=dict(title='Campaign Count', overlaying='y', side='right', range=[0, plot_df['count'].max()*1.1])
+        )
+        
+        # Customize the plot
+        fig.update_layout(
+            title=f"Distribution of Successful Campaigns by {col_name}",
+            xaxis_title=f"{col_name}",
+            yaxis_title="Proportion of Successful Campaigns",
+            xaxis_tickangle=-45,
+            height=600,
+            width=1000,
+            showlegend=True
+        )
+        
+        # Display the plot
+        st.plotly_chart(fig)
+    
+    st.subheader(f"Distribution of Successful Campaigns by Country")
+    plot_label_distribution_categorical(clean_df, 'country')
+    st.markdown('What is N,"0 country ?')
+    st.markdown("""Notes: le dataset est très très largement dominé par des campagnes US, puis GB""")
+    st.dataframe(clean_df[clean_df.country=='N,"0'])
+
+
+    st.subheader(f"Distribution of Successful Campaigns by Main category")
+    plot_label_distribution_categorical(clean_df, 'main_category')
+
+    st.subheader(f"Distribution of Successful Campaigns by Currency")
+    plot_label_distribution_categorical(clean_df, 'main_category')
+
+    
