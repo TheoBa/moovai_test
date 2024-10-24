@@ -59,7 +59,7 @@ def scaling(df, columns_to_scale, scaler):
     return scaled_df
 
 
-def feature_eng(clean_df, categorical_columns, columns_to_scale, scaler):
+def feature_eng(clean_df):
     feature_df = (
          clean_df
          .assign(
