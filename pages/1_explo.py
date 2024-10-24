@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import datetime as dt
 import io
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -22,6 +23,11 @@ def clean_raw_ks_df(raw_df):
                 .drop(columns=['ID', 'Unnamed: 13', 'Unnamed: 14', 'Unnamed: 15', 'Unnamed: 16'])
                 )
     return clean_df
+
+
+def add_year_month(df):
+        return (df.assign(year=lambda x: x["launched"].dt.year,
+                          month=lambda x: x["launched"].dt.month))
 
 
 if __name__=="__main__":
@@ -113,14 +119,16 @@ if __name__=="__main__":
     
     clean_df['label'] = np.where(clean_df['state'] == 'successful', 1, 0)
     clean_df['goal'] = clean_df['goal'].astype(float).astype(int)
-    
+    clean_df = add_year_month(clean_df)
 
     st.markdown(clean_df.columns)
     
     st.markdown("## Correlation Analysis et Feature Importance")
 
     # Select numeric columns
-    numeric_columns = clean_df.select_dtypes(include=['int64', 'float64']).columns
+    numeric_columns = clean_df.select_dtypes(include=['int32', 'int64', 'float64']).columns
+
+    st.markdown(numeric_columns)
     
     # Encode categorical columns using one-hot encoding
     categorical_columns = ['category', 'main_category', 'currency', 'country']
@@ -156,35 +164,6 @@ if __name__=="__main__":
     st.markdown("""
                 Notes à la volée: pas de pb de déséquilibre""")
     
-    if False:
-        # Feature importance using Random Forest
-        st.subheader("Feature Importance")
-
-        # Prepare the data
-        X = clean_df[numeric_columns]
-        y = clean_df['label']
-
-        # Train a Random Forest classifier
-        rf_classifier = RandomForestClassifier(n_estimators=100, random_state=42)
-        rf_classifier.fit(X, y)
-
-        # Get feature importance
-        feature_importance = pd.DataFrame({
-            'feature': numeric_columns,
-            'importance': rf_classifier.feature_importances_
-        }).sort_values('importance', ascending=False)
-
-        # Plot feature importance
-        fig_importance = plt.figure(figsize=(10, 6))
-        sns.barplot(x='importance', y='feature', data=feature_importance)
-        plt.title("Feature Importance")
-        st.pyplot(fig_importance)
-
-        st.markdown("""
-        ### Notes à la volée:
-        1. Difficile de tirer des conclusions de la matrice de corrélation, tant les corrélations sont faibles avec le label.
-        2. En revanche l'analyse d'importance des features ressemble plus à ce dont je m'attendais. A savoir que la quantité demandée semble beaucoup influer sur le succès ou non de la campagne
-        """)
 
     st.dataframe(clean_df.describe())
     st.markdown(f"Number of campaign with a goal above 1000000: {len(clean_df[clean_df['goal']>1000000].index)}")
@@ -198,7 +177,7 @@ if __name__=="__main__":
 
     def plot_label_distribution_numerical(df, col_name):
         # Calculate the min and max values for the column (only if successful campaign)
-        min_val = df[col_name].min()
+        min_val = df[df.label==1][col_name].min()
         max_val = df[df.label==1][col_name].max()
         
         # Create 10 bins
@@ -314,7 +293,7 @@ if __name__=="__main__":
         )
         
         # Display the plot
-        st.plotly_chart(fig)
+        st.plotly_chart(fig, key=f"categorical_{col_name}")
     
     st.subheader(f"Distribution of Successful Campaigns by Country")
     plot_label_distribution_categorical(clean_df, 'country')
@@ -327,6 +306,43 @@ if __name__=="__main__":
     plot_label_distribution_categorical(clean_df, 'main_category')
 
     st.subheader(f"Distribution of Successful Campaigns by Currency")
-    plot_label_distribution_categorical(clean_df, 'main_category')
-
+    plot_label_distribution_categorical(clean_df, 'currency')
+    st.markdown("""Notes: currency a l'air d'avoir un réel impact sur le taux de réussite des campagnes. Aussi cela peut etre un vrai insight à partager au client / intégrer dans la modélisation""")
     
+    st.markdown("## Etude impact year et month de lancement")
+    st.subheader(f"Distribution of Successful Campaigns by Year")
+    plot_label_distribution_categorical(clean_df, 'year')
+    st.subheader(f"Distribution of Successful Campaigns by Month")
+    plot_label_distribution_categorical(clean_df, 'month')
+
+
+    if True:
+        # Feature importance using Random Forest
+        st.subheader("Feature Importance")
+
+        # Prepare the data
+        X = encoded_df[numeric_columns]
+        y = encoded_df['label']
+
+        # Train a Random Forest classifier
+        rf_classifier = RandomForestClassifier(n_estimators=100, random_state=42)
+        rf_classifier.fit(X, y)
+
+        # Get feature importance
+        feature_importance = pd.DataFrame({
+            'feature': numeric_columns,
+            'importance': rf_classifier.feature_importances_
+        }).sort_values('importance', ascending=False)
+
+        # Plot feature importance
+        fig_importance = plt.figure(figsize=(10, 6))
+        sns.barplot(x='importance', y='feature', data=feature_importance)
+        plt.title("Feature Importance")
+        st.pyplot(fig_importance)
+
+        st.markdown("""
+        ### Notes à la volée:
+        1. Difficile de tirer des conclusions de la matrice de corrélation, tant les corrélations sont faibles avec le label.
+        2. La quantité 'goal' demandée semble le plus influer sur le succès ou non de la campagne
+        3. Le mois de lancement semble avoir tout autant d'importance que la durée de la campagne !
+        """)
