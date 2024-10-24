@@ -81,11 +81,11 @@ for name, model in models.items():
     st.write("Classification Report:")
     st.text(classification_report(y_val, y_val_pred))
 
-# # Feature importance for Random Forest 
+# Feature importance for Random Forest 
 
-# st.subheader("Feature Importance from the Random Forest model")
-# feature_importance = pd.DataFrame({
-#     'feature': X.columns,
-#     'importance': models["Random Forest"].feature_importances_
-# }).sort_values('importance', ascending=False)
-# st.dataframe(feature_importance)
+st.subheader("Feature Importance from the Random Forest model")
+feature_importance = pd.DataFrame({
+    'feature': X.columns,
+    'importance': models["Random Forest"].feature_importances_
+}).sort_values('importance', ascending=False)
+st.dataframe(feature_importance)
