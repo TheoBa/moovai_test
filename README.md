@@ -26,7 +26,7 @@ Identification d'insights sur la contribution au succès ou non des campagnes
 ![plot](data/feature_importance.png)
 Le graph d'importance des features mets en évidence les leviers sur lesquels le client peut agir pour faire varier le taux de réussite de sa campagne
 ![plot](data/hist_main_category.png)
-L'étude des histogrammes de distribution des données en fonction des différentes feature (ici _main category_) permet de mettre en évidence des outliers et des propriétés de distributions particulières, dont la création de feature peut en découler. En l'occurence j'en ai pas tellement créer à part _timedelta_ :D
+L'étude des histogrammes de distribution des données en fonction des différentes feature (ici _main category_) permet de mettre en évidence des outliers et des propriétés de distributions particulières, dont la création de feature peut en découler. En l'occurence j'en ai pas tellement crée à part _timedelta_ :D
 ![plot](data/distribution_of_goal_amount_and_timedelta.png)
 La distribution des valeurs dans les colonnes _goal_ et _timedelta_ mets en évidence l'existence d'outliers (à prendre en compte, soit dans une partie engineering, soit dans le choix du scaler)
 
