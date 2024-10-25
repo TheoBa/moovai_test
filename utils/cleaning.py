@@ -76,6 +76,22 @@ def feature_eng(clean_df):
          )
          #.pipe(encode_categorical_columns, categorical_columns)      
          #.pipe(scaling, columns_to_scale, scaler)
-         
+         )
+    return feature_df
+
+
+def feature_eng_client_input(clean_df):
+    feature_df = (
+         clean_df
+         .assign(
+              # Convert 'launched' and 'deadline' to datetime 
+              launched=lambda df: pd.to_datetime(df['launched']),
+              deadline=lambda df: pd.to_datetime(df['deadline']),
+              # Compute timedelta
+              timedelta=lambda df: (df['deadline'] - df['launched']).dt.days,
+              # Extract year and month of campaign launch
+              year=lambda x: x["launched"].dt.year,
+              month=lambda x: x["launched"].dt.month,
+         )
          )
     return feature_df
