@@ -43,6 +43,7 @@ def train_client_model():
 
 
 def get_feature_importance():
+    # Copier Coller brutal de ce que j'avais dev dans 1_explo.py
     from sklearn.preprocessing import OrdinalEncoder
 
     clean_df = st.session_state["X_feature_importance"]
