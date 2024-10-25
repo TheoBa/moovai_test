@@ -21,6 +21,7 @@ def init_client_model():
     # Prepare the data
     X = feature_df[features]
     y = feature_df[target]
+    st.session_state["X_feature_importance"] = X
     # Perform one-hot encoding for categorical variables
     X = pd.get_dummies(X, columns=categorical_features)
     # Scaling
@@ -42,12 +43,22 @@ def train_client_model():
 
 
 def get_feature_importance():
-    # Feature importance for Random Forest 
+    from sklearn.preprocessing import OrdinalEncoder
+
+    clean_df = st.session_state["X_feature_importance"]
+    numeric_columns = clean_df.select_dtypes(include=['int32', 'int64', 'float64']).columns    
+    categorical_columns = ['category', 'main_category', 'currency', 'country']
+    encoder = OrdinalEncoder()
+    encoded_features = encoder.fit_transform(clean_df[categorical_columns])
+    encoded_feature_names = encoder.get_feature_names_out(categorical_columns)
+    encoded_df = pd.DataFrame(encoded_features, columns=encoded_feature_names, index=clean_df.index)
+    encoded_df = pd.concat([clean_df[numeric_columns], encoded_df], axis=1)
+
     feature_importance_model = RandomForestClassifier(random_state=42)
-    feature_importance_model.fit(st.session_state["X"], st.session_state["y"])
-    st.subheader("Feature Importance from the Random Forest model")
+    feature_importance_model.fit(encoded_df, st.session_state["y"])
+    st.subheader("Impact on your campaign success")
     feature_importance = pd.DataFrame({
-        'feature': st.session_state["X"].columns,
+        'feature': encoded_df.columns,
         'importance': feature_importance_model.feature_importances_
     }).sort_values('importance', ascending=False)
     st.session_state["feature_importance"] = feature_importance
