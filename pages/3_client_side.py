@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 from utils.inputs import CAMPAIGN_INPUTS
-from utils.client_model import init_client_model, train_client_model, get_feature_importance, plot_feature_importance
+from utils.client_model import ClientModel, init_client_model, train_client_model, get_feature_importance, plot_feature_importance
 from utils.cleaning import feature_eng_client_input
 
 st.set_page_config(page_title="Client side", page_icon="✍️", layout="wide")
@@ -54,7 +54,7 @@ def get_campaign_information():
 
 def encode_client_inputs():
     encoded_dict = {}
-    for col in st.session_state["X"].columns:
+    for col in st.session_state["client_model"].X.columns:
         if col in list(st.session_state["clean_client_inputs"].columns):
             encoded_dict[col] = st.session_state["clean_client_inputs"].loc[0, col]
         else:
@@ -63,37 +63,30 @@ def encode_client_inputs():
     for col in ['category', 'main_category', 'currency', 'country']:
         encoded_dict[f"{col}_{st.session_state['clean_client_inputs'].loc[0, col]}"] = 1
 
-    st.session_state["model_ready_user_inputs"] = pd.DataFrame([encoded_dict])[st.session_state["X"].columns]
+    st.session_state["model_ready_user_inputs"] = pd.DataFrame([encoded_dict])[st.session_state["client_model"].X.columns]
 
 
 def scale_inputs():
-    st.session_state["scaled_user_inputs"] = st.session_state["scaler"].transform(st.session_state["model_ready_user_inputs"])
+    st.session_state["scaled_user_inputs"] = st.session_state["client_model"].scaler.transform(st.session_state["model_ready_user_inputs"])
 
 
 def get_prediction():
-    pred_proba = st.session_state["model"].predict_proba(st.session_state["scaled_user_inputs"])
+    pred_proba = st.session_state["client_model"].model.predict_proba(st.session_state["scaled_user_inputs"])
     st.metric(label="Taux de réussite", value=f"{int(pred_proba[0][1]*10000)/100} %")
 
 
-if "model_trained" not in st.session_state:
-    st.session_state["model_trained"] = False
-
-if not(st.session_state["model_trained"]):
+# Initialize the model if it doesn't exist in the session state
+if "client_model" not in st.session_state:
     init_client_model()
     train_client_model()
-    st.session_state["model_trained"] = True
 
 initialize_inputs()
 get_campaign_information()
 
-FE_button = st.button("Plot feature_importance")
-if FE_button:
+# When you need to get feature importance
+if st.button("Show Feature Importance"):
     get_feature_importance()
+
+# When you need to plot feature importance
+if st.button("Plot Feature Importance"):
     plot_feature_importance()
-
-
-
-
-
-
-
