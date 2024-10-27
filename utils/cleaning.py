@@ -11,7 +11,7 @@ SCALERS = {
 
 
 def load_ks_data():
-    df = pd.read_csv('data/ks_dataset.csv', sep=",", encoding="latin1")
+    df = pd.read_csv('data/ks_dataset.csv', sep=",", encoding="latin1",dtype= {"Unnamed: 13": "string", "Unnamed: 14": "string", "Unnamed: 15": "string", "Unnamed: 16": "string"})
     return df
 
 
