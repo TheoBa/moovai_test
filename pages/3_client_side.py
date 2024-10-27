@@ -44,6 +44,12 @@ def get_campaign_information():
             for key, value in CAMPAIGN_INPUTS.items():
                 st.session_state[f"_{key}"] = user_inputs[key]
             st.session_state["client_inputs"] = pd.DataFrame([user_inputs])[list(CAMPAIGN_INPUTS.keys())]
+            
+            st.session_state["clean_client_inputs"] = feature_eng_client_input(st.session_state["client_inputs"])
+
+            encode_client_inputs()
+            scale_inputs()
+            get_prediction()
 
 
 def encode_client_inputs():
@@ -69,18 +75,16 @@ def get_prediction():
     st.metric(label="Taux de réussite", value=f"{int(pred_proba[0][1]*10000)/100} %")
 
 
-init_client_model()
-train_client_model()
+if "model_trained" not in st.session_state:
+    st.session_state["model_trained"] = False
+
+if not(st.session_state["model_trained"]):
+    init_client_model()
+    train_client_model()
+    st.session_state["model_trained"] = True
 
 initialize_inputs()
 get_campaign_information()
-
-st.session_state["clean_client_inputs"] = feature_eng_client_input(st.session_state["client_inputs"])
-
-encode_client_inputs()
-scale_inputs()
-get_prediction()
-
 
 FE_button = st.button("Plot feature_importance")
 if FE_button:
